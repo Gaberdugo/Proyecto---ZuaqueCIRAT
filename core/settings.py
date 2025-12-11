@@ -1,27 +1,23 @@
-
-
-
 from pathlib import Path
+import os
+import environ
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+env = environ.Env(
+    DEBUG=(bool, True)
+)
+environ.Env.read_env()
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+SECRET_KEY = env("SECRET_KEY")
+DEBUG = env("DEBUG")
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS_DEV")
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-scwv6$jr#9yp6p_vgbb1i@#&1c*s-nw8n7ssp-0d$4xdthjxd6'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
-
-
-# Application definition
-
-INSTALLED_APPS = [
+# ============================
+# APPS
+# ============================
+DJANGO_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -30,7 +26,39 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 ]
 
+PROYECT_APPS = []
+
+THIRD_PARTY_APPS = [
+    'corsheaders',
+    'rest_framework',
+    'ckeditor',
+    'ckeditor_uploader',
+]
+
+INSTALLED_APPS = DJANGO_APPS + PROYECT_APPS + THIRD_PARTY_APPS
+
+# ============================
+# CKEDITOR
+# ============================
+CKEDITOR_UPLOAD_PATH = "uploads/"
+
+CKEDITOR_CONFIGS = {
+    'default': {
+        'toolbar': 'Custom',
+        'toolbar_Custom': [
+            ['Bold', 'Italic', 'Underline'],
+            ['NumberedList', 'BulletedList'],
+            ['Link', 'Unlink'],
+            ['RemoveFormat', 'Source'],
+        ],
+    }
+}
+
+# ============================
+# MIDDLEWARE
+# ============================
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',   # CORREGIDO
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -42,10 +70,13 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'core.urls'
 
+# ============================
+# TEMPLATES
+# ============================
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'build')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -60,57 +91,55 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
+# ============================
+# BASE DE DATOS
+# ============================
 
-# Database
-# https://docs.djangoproject.com/en/3.2/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Si DATABASE_URL está vacío → usa sqlite
+if env("DATABASE_URL") == "":
+    DATABASES = {
+        "default": {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': env.db("DATABASE_URL")
+    }
 
+DATABASES['default']['ATOMIC_REQUESTS'] = True
 
-# Password validation
-# https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
+# ============================
+# STATIC & MEDIA
+# ============================
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / "static"
 
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / "media"
+
+STATICFILES_DIRS = [
+    BASE_DIR / "build/static"
 ]
 
+# ============================
+# REST FRAMEWORK
+# ============================
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly'
+    ]
+}
 
-# Internationalization
-# https://docs.djangoproject.com/en/3.2/topics/i18n/
+# ============================
+# CORS
+# ============================
+CORS_ORIGIN_WHITELIST = env.list("CORS_ORIGIN_WHITELIST_DEV")
+CSFR_TRUSTED_ORIGINS = env.list("CSFR_TRUSTED_ORIGINS_DEV")
 
-LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = 'UTC'
-
-USE_I18N = True
-
-USE_L10N = True
-
-USE_TZ = True
-
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/3.2/howto/static-files/
-
-STATIC_URL = '/static/'
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+# PRODUCCIÓN
+if not DEBUG:
+    ALLOWED_HOSTS = env.list("ALLOWED_HOSTS_DEPLOY")
+    CORS_ORIGIN_WHITELIST = env.list("CORS_ORIGIN_WHITELIST_DEPLOY")
+    CSFR_TRUSTED_ORIGINS = env.list("CSFR_TRUSTED_ORIGINS_DEPLOY")
